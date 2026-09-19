@@ -26,6 +26,8 @@ final class SsoClientController
         private readonly SsoClientConfig $config,
         private readonly TokenClient $tokens,
         private readonly IdTokenVerifier $idTokens,
+        private readonly RevocationClient $revocation,
+        private readonly \MixuDev\LaravelSsoClient\Services\LogoutUrlBuilder $logoutUrl,
     ) {
     }
 
@@ -90,12 +92,33 @@ final class SsoClientController
 
     public function logout(Request $request): RedirectResponse
     {
-        app(TokenStore::class)->forget();
-        Auth::logout();
-        $request->session()->invalidate();
-        $request->session()->regenerateToken();
-        $request->session()->regenerate();
+        $tokenSet = app(TokenStore::class)->get();
+        $providerLogoutUrl = null;
 
-        return redirect('/');
+        try {
+            $discovery = $this->discovery->get();
+            if ($tokenSet !== null) {
+                $this->revocation->revoke($discovery, $tokenSet->accessToken);
+                if ($tokenSet->refreshToken !== null) {
+                    $this->revocation->revoke($discovery, $tokenSet->refreshToken);
+                }
+            }
+            $providerLogoutUrl = $this->logoutUrl->build(
+                $discovery,
+                $tokenSet?->idToken,
+                rtrim(strtr(base64_encode(random_bytes(32)), '+/', '-_'), '='),
+            );
+        } catch (\Throwable) {
+            $providerLogoutUrl = null;
+        } finally {
+            app(TokenStore::class)->forget();
+            Auth::logout();
+            $request->session()->invalidate();
+            $request->session()->regenerateToken();
+        }
+
+        return $providerLogoutUrl === null
+            ? redirect('/')
+            : redirect()->away($providerLogoutUrl);
     }
 }

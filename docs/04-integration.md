@@ -25,7 +25,7 @@ Do not create a local session from `pending_tokens` without resolving and authen
 </form>
 ```
 
-The current foundation clears local package session state. Provider end-session and token revocation are roadmap items.
+Logout revokes the access token and refresh token when the provider exposes a revocation endpoint, clears local package session state, and redirects to the provider end-session endpoint when available. Local logout remains failure-safe: provider failure still clears the local session and redirects locally.
 
 ## Provider contract
 

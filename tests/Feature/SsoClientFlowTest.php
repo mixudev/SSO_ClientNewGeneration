@@ -56,6 +56,33 @@ final class SsoClientFlowTest extends TestCase
         self::assertSame('new-refresh', $store->get()?->refreshToken);
     }
 
+    public function test_logout_revokes_tokens_and_redirects_to_provider_end_session(): void
+    {
+        $user = new class implements \Illuminate\Contracts\Auth\Authenticatable {
+            public function getAuthIdentifierName(): string { return 'id'; }
+            public function getAuthIdentifier(): string { return 'user-1'; }
+            public function getAuthPasswordName(): string { return 'password'; }
+            public function getAuthPassword(): string { return ''; }
+            public function getRememberToken(): string { return ''; }
+            public function setRememberToken($value): void {}
+            public function getRememberTokenName(): string { return ''; }
+        };
+        app('auth')->login($user);
+        app(\MixuDev\LaravelSsoClient\Contracts\TokenStore::class)->put(new TokenSet('access', 'Bearer', 3600, 'refresh', 'id-token'));
+        Http::fake([
+            'https://sso.example.test/.well-known/openid-configuration' => Http::response($this->discovery()),
+            'https://sso.example.test/oauth/revoke' => Http::response([]),
+        ]);
+
+        $response = $this->post(route('ssoclient.logout'));
+
+        $response->assertRedirect();
+        self::assertStringStartsWith('https://sso.example.test/oauth/end-session?', (string) $response->headers->get('Location'));
+        self::assertFalse(auth()->check());
+        self::assertNull(app(\MixuDev\LaravelSsoClient\Contracts\TokenStore::class)->get());
+        Http::assertSentCount(3);
+    }
+
     public function test_logout_clears_authenticated_session_and_encrypted_tokens(): void
     {
         $user = new class implements \Illuminate\Contracts\Auth\Authenticatable {
@@ -85,6 +112,7 @@ final class SsoClientFlowTest extends TestCase
             'jwks_uri' => 'https://sso.example.test/.well-known/jwks.json',
             'userinfo_endpoint' => 'https://sso.example.test/oauth/userinfo',
             'end_session_endpoint' => 'https://sso.example.test/oauth/end-session',
+            'revocation_endpoint' => 'https://sso.example.test/oauth/revoke',
         ];
     }
 }
