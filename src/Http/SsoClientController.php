@@ -8,6 +8,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use MixuDev\LaravelSsoClient\Contracts\IdentityResolver;
+use MixuDev\LaravelSsoClient\Contracts\TokenStore;
 use MixuDev\LaravelSsoClient\Exceptions\ConfigurationException;
 use MixuDev\LaravelSsoClient\Security\IdTokenVerifier;
 use MixuDev\LaravelSsoClient\Security\PkceGenerator;
@@ -79,6 +80,7 @@ final class SsoClientController
             throw new ConfigurationException('An IdentityResolver binding is required before SSO login.');
         }
         Auth::login(app(IdentityResolver::class)->resolve($verifiedTokenSet));
+        app(TokenStore::class)->put($verifiedTokenSet);
         $request->session()->regenerate();
 
         return redirect('/');
@@ -86,9 +88,11 @@ final class SsoClientController
 
     public function logout(Request $request): RedirectResponse
     {
-        $request->session()->forget('ssoclient.pending_tokens');
+        app(TokenStore::class)->forget();
+        Auth::logout();
         $request->session()->invalidate();
         $request->session()->regenerateToken();
+        $request->session()->regenerate();
 
         return redirect('/');
     }

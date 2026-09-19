@@ -61,11 +61,8 @@ Available foundation:
 Not yet complete:
 
 - default application identity resolver and provisioning policy;
-- encrypted persistent token store and refresh single-flight;
-- UserInfo service;
-- provider logout endpoint integration;
-- revocation service;
-- unknown-`kid` forced JWKS refresh;
+- refresh-token single-flight and rotation service;
+- provider logout URL/revocation controller integration;
 - full package feature/integration test suite;
 - external HTTPS smoke test;
 - signed release and Packagist publication.

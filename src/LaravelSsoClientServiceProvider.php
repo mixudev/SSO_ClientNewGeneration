@@ -8,7 +8,9 @@ use Illuminate\Support\ServiceProvider;
 use MixuDev\LaravelSsoClient\Http\SsoClientController;
 use MixuDev\LaravelSsoClient\Security\PkceGenerator;
 use MixuDev\LaravelSsoClient\Security\StateManager;
+use MixuDev\LaravelSsoClient\Support\SessionTokenStore;
 use MixuDev\LaravelSsoClient\Support\SsoClientConfig;
+use MixuDev\LaravelSsoClient\Contracts\TokenStore;
 
 final class LaravelSsoClientServiceProvider extends ServiceProvider
 {
@@ -18,6 +20,7 @@ final class LaravelSsoClientServiceProvider extends ServiceProvider
         $this->app->singleton(SsoClientConfig::class);
         $this->app->singleton(PkceGenerator::class);
         $this->app->singleton(StateManager::class);
+        $this->app->singleton(TokenStore::class, SessionTokenStore::class);
     }
 
     public function boot(): void
