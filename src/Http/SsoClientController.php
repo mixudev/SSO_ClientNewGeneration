@@ -8,8 +8,10 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use MixuDev\LaravelSsoClient\Contracts\IdentityResolver;
+use MixuDev\LaravelSsoClient\Data\TokenSet;
 use MixuDev\LaravelSsoClient\Contracts\TokenStore;
 use MixuDev\LaravelSsoClient\Exceptions\ConfigurationException;
+use MixuDev\LaravelSsoClient\Exceptions\ProtocolException;
 use MixuDev\LaravelSsoClient\Security\IdTokenVerifier;
 use MixuDev\LaravelSsoClient\Security\PkceGenerator;
 use MixuDev\LaravelSsoClient\Security\StateManager;
@@ -54,7 +56,7 @@ final class SsoClientController
     public function callback(Request $request): RedirectResponse
     {
         if ($request->filled('error') || ! is_string($request->query('code')) || $request->query('code') === '' || ! is_string($request->query('state')) || $request->query('state') === '') {
-            throw new \MixuDev\LaravelSsoClient\Exceptions\ProtocolException('SSO authorization callback is invalid.');
+            throw new ProtocolException('SSO authorization callback is invalid.');
         }
         $context = $this->state->consume($request->query('state'));
         $discovery = $this->discovery->get();
@@ -64,10 +66,10 @@ final class SsoClientController
             $context['verifier'],
         );
         if ($tokenSet->idToken === null) {
-            throw new \MixuDev\LaravelSsoClient\Exceptions\ProtocolException('OIDC ID Token is required.');
+            throw new ProtocolException('OIDC ID Token is required.');
         }
         $claims = $this->idTokens->verify($tokenSet->idToken, $discovery, $context['nonce']);
-        $verifiedTokenSet = new \MixuDev\LaravelSsoClient\Data\TokenSet(
+        $verifiedTokenSet = new TokenSet(
             $tokenSet->accessToken,
             $tokenSet->tokenType,
             $tokenSet->expiresIn,
